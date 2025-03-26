@@ -25,7 +25,7 @@ SERVICES = ['📱 WhatsApp', '✈️ Telegram']
 RESERVE_TIME = 420  # 7 минут
 CRYPTOBOT_TOKEN = ('361366:AAX23ElQvhaHcWydcSeS764cmRWp43ikxNO')
 CRYPTOBOT_CURRENCY = 'USDT'
-ADMIN_ID = ('5864627885')
+ADMIN_ID = ['5864627885', '7783847586']
 SELLER_SHARE = 0.6  # 60% продавцу
 ADMIN_SHARE = 0.4    # 40% администратору
 
