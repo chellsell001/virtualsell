@@ -682,24 +682,20 @@ def withdraw_seller(call):
             bot.answer_callback_query(call.id, "✅ Средства уже получены")
             return
             
-        # Получаем информацию о чеке
+        # Создаем ссылку для получения средств
         seller_amount = transaction.amount * SELLER_SHARE
-        invoice_info = get_invoice_info(transaction.seller_invoice_id)
+        withdraw_url = f"https://t.me/CryptoBot?start=withdraw_{transaction.seller_invoice_id}"
         
-        if not invoice_info:
-            bot.answer_callback_query(call.id, "❌ Ошибка получения информации о чеке")
-            return
-            
-        # Отправляем прямую ссылку на оплату
         bot.send_message(
             call.message.chat.id,
             f"💸 Для получения {seller_amount:.2f} {transaction.crypto_currency}:\n"
-            f"Ссылка: {invoice_info['pay_url']}\n\n"
-            "Нажмите на ссылку выше для перехода к оплате",
+            f"1. Откройте @CryptoBot\n"
+            f"2. Нажмите 'Start'\n"
+            f"3. Или перейдите по прямой ссылке: {withdraw_url}",
             disable_web_page_preview=True
         )
         
-        bot.answer_callback_query(call.id, "✅ Ссылка на чек отправлена")
+        bot.answer_callback_query(call.id, "✅ Инструкция для получения средств отправлена")
         
     except Exception as e:
         bot.answer_callback_query(call.id, f"❌ Ошибка: {str(e)}")
@@ -723,24 +719,20 @@ def withdraw_admin(call):
             bot.answer_callback_query(call.id, "✅ Средства уже получены")
             return
             
-        # Получаем информацию о чеке
+        # Создаем ссылку для получения средств
         admin_amount = transaction.amount * ADMIN_SHARE
-        invoice_info = get_invoice_info(transaction.admin_invoice_id)
+        withdraw_url = f"https://t.me/CryptoBot?start=withdraw_{transaction.admin_invoice_id}"
         
-        if not invoice_info:
-            bot.answer_callback_query(call.id, "❌ Ошибка получения информации о чеке")
-            return
-            
-        # Отправляем прямую ссылку на оплату
         bot.send_message(
             call.message.chat.id,
             f"💸 Для получения {admin_amount:.2f} {transaction.crypto_currency}:\n"
-            f"Ссылка: {invoice_info['pay_url']}\n\n"
-            "Нажмите на ссылку выше для перехода к оплате",
+            f"1. Откройте @CryptoBot\n"
+            f"2. Нажмите 'Start'\n"
+            f"3. Или перейдите по прямой ссылке: {withdraw_url}",
             disable_web_page_preview=True
         )
         
-        bot.answer_callback_query(call.id, "✅ Ссылка на чек отправлена")
+        bot.answer_callback_query(call.id, "✅ Инструкция для получения средств отправлена")
         
     except Exception as e:
         bot.answer_callback_query(call.id, f"❌ Ошибка: {str(e)}")
