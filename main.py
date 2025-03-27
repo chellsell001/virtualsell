@@ -324,7 +324,7 @@ def start(message):
     
     bot.send_message(
         message.chat.id,
-        "🔢 Биржа номеров купля/продажа(USDT)\n\n"
+        "🔢 Биржа номеров купля/продажа(USDT)",
         reply_markup=markup
     )
 
