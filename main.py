@@ -317,16 +317,74 @@ def start(message):
             types.KeyboardButton('💰 Продать номер'),
             types.KeyboardButton('🛒 Купить номер'),
             types.KeyboardButton('📊 Мои номера'),
+            types.KeyboardButton('🗑 Удалить все мои лоты'),
             types.KeyboardButton('👨‍💻 Админ-панель')
         )
     else:
-        markup = create_keyboard(['💰 Продать номер', '🛒 Купить номер', '📊 Мои номера'])
+        markup = create_keyboard([
+            '💰 Продать номер', 
+            '🛒 Купить номер', 
+            '📊 Мои номера',
+            '🗑 Удалить все мои лоты'
+        ])
     
     bot.send_message(
         message.chat.id,
         "🔢 Биржа номеров купля/продажа(USDT)",
         reply_markup=markup
     )
+
+
+@bot.message_handler(func=lambda m: m.text == '🗑 Удалить все мои лоты')
+def delete_all_numbers(message):
+    numbers = session.query(Number).filter_by(
+        seller_id=str(message.from_user.id),
+        status='available'
+    ).all()
+    
+    if not numbers:
+        bot.send_message(message.chat.id, "У вас нет доступных номеров для удаления.")
+        return
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("✅ Да, удалить все", callback_data="confirm_delete_all"),
+        types.InlineKeyboardButton("❌ Нет, отменить", callback_data="cancel_delete_all")
+    )
+    
+    bot.send_message(
+        message.chat.id,
+        f"⚠️ Вы уверены, что хотите удалить ВСЕ свои доступные номера ({len(numbers)} шт.)?",
+        reply_markup=markup
+    )
+
+@bot.callback_query_handler(func=lambda call: call.data == 'confirm_delete_all')
+def confirm_delete_all(call):
+    numbers = session.query(Number).filter_by(
+        seller_id=str(call.from_user.id),
+        status='available'
+    ).all()
+    
+    count = len(numbers)
+    for number in numbers:
+        session.delete(number)
+    session.commit()
+    
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=f"✅ Удалено {count} номеров."
+    )
+    bot.answer_callback_query(call.id, f"Удалено {count} номеров")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'cancel_delete_all')
+def cancel_delete_all(call):
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text="❌ Удаление отменено."
+    )
+    bot.answer_callback_query(call.id, "Удаление отменено")
 
 @bot.message_handler(func=lambda m: m.text == '👨‍💻 Админ-панель' and str(m.from_user.id) == ADMIN_ID)
 def admin_panel_button(message):
@@ -800,6 +858,38 @@ def withdraw_admin(call):
     except Exception as e:
         bot.answer_callback_query(call.id, f"❌ Ошибка: {str(e)}")
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('delete_'))
+def delete_number_handler(call):
+    try:
+        uid = call.data.split('_')[1]
+        number = session.query(Number).filter_by(uid=uid).first()
+        
+        if not number:
+            bot.answer_callback_query(call.id, "❌ Номер не найден")
+            return
+            
+        if str(number.seller_id) != str(call.from_user.id):
+            bot.answer_callback_query(call.id, "❌ Это не ваш номер")
+            return
+            
+        if number.status != 'available':
+            bot.answer_callback_query(call.id, "❌ Можно удалять только доступные номера")
+            return
+            
+        session.delete(number)
+        session.commit()
+        
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"❌ Номер удален:\n\n{format_number_info(number)}",
+            parse_mode='HTML'
+        )
+        bot.answer_callback_query(call.id, "✅ Номер удален")
+        
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"❌ Ошибка: {str(e)}")
+
 def get_invoice_info(invoice_id):
     """Получаем информацию о чеке из Cryptobot"""
     headers = {'Crypto-Pay-API-Token': CRYPTOBOT_TOKEN}
@@ -929,41 +1019,31 @@ def show_user_numbers(message):
         seller_id=str(message.from_user.id)
     ).order_by(Number.added_at.desc()).all()
     
-    # Номера, которые пользователь купил
-    bought_numbers = session.query(Number).filter_by(
-        reserved_by=str(message.from_user.id),
-        status='completed'
-    ).order_by(Number.reserved_at.desc()).all()
-    
-    if not selling_numbers and not bought_numbers:
-        bot.send_message(message.chat.id, "У вас нет номеров.")
+    if not selling_numbers:
+        bot.send_message(message.chat.id, "У вас нет номеров на продаже.")
         return
     
-    if selling_numbers:
-        bot.send_message(message.chat.id, "🛒 Ваши номера на продаже:")
-        for num in selling_numbers:
-            status = "🟢 Доступен" if num.status == 'available' else \
-                   "🟡 Зарезервирован" if num.status == 'reserved' else \
-                   "🔴 Продан"
-            
-            bot.send_message(
-                message.chat.id,
-                f"{format_number_info(num)}\n"
-                f"📊 Статус: {status}\n"
-                f"🕒 Добавлен: {num.added_at.strftime('%d.%m.%Y %H:%M')}",
-                parse_mode='HTML'
-            )
-    
-    if bought_numbers:
-        bot.send_message(message.chat.id, "🛍 Ваши купленные номера:")
-        for num in bought_numbers:
-            bot.send_message(
-                message.chat.id,
-                f"{format_number_info(num)}\n"
-                f"🔢 Код: {num.sms_code}\n"
-                f"🕒 Куплен: {num.reserved_at.strftime('%d.%m.%Y %H:%M')}",
-                parse_mode='HTML'
-            )
+    bot.send_message(message.chat.id, "🛒 Ваши номера на продаже:")
+    for num in selling_numbers:
+        status = "🟢 Доступен" if num.status == 'available' else \
+               "🟡 Зарезервирован" if num.status == 'reserved' else \
+               "🔴 Продан"
+        
+        markup = types.InlineKeyboardMarkup()
+        if num.status == 'available':
+            markup.add(types.InlineKeyboardButton(
+                "❌ Удалить", 
+                callback_data=f"delete_{num.uid}"
+            ))
+        
+        bot.send_message(
+            message.chat.id,
+            f"{format_number_info(num)}\n"
+            f"📊 Статус: {status}\n"
+            f"🕒 Добавлен: {num.added_at.strftime('%d.%m.%Y %H:%M')}",
+            parse_mode='HTML',
+            reply_markup=markup
+        )
 
 if __name__ == '__main__':
     print("Бот с полной функциональностью запущен!")
