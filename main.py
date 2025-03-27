@@ -325,8 +325,6 @@ def start(message):
     bot.send_message(
         message.chat.id,
         "🔢 Биржа номеров (USDT)\n\n"
-        f"💰 Продавцы получают {SELLER_SHARE*100}% от суммы\n"
-        f"💼 Администратор получает {ADMIN_SHARE*100}%",
         reply_markup=markup
     )
 
@@ -376,7 +374,7 @@ def process_sell_service(message, user_data):
     example = COUNTRIES[user_data['country']]['example']
     msg = bot.send_message(
         message.chat.id,
-        f"Введите номер телефона (только цифры, пример: {example}):",
+        f"Введите номер телефона (только цифры, с кодом страны пример: +7{example}):",
         reply_markup=types.ReplyKeyboardRemove()
     )
     bot.register_next_step_handler(msg, process_sell_phone, user_data)
@@ -387,7 +385,7 @@ def process_sell_phone(message, user_data):
         msg = bot.send_message(
             message.chat.id,
             f"❌ Неверный формат номера для {user_data['country']}.\n"
-            f"Требуется {country_config['length']} цифр (пример: {country_config['example']}).\n"
+            f"Требуется {country_config['length']} цифр с кодом страны (пример: +7{country_config['example']}).\n"
             "Введите еще раз:"
         )
         bot.register_next_step_handler(msg, process_sell_phone, user_data)
