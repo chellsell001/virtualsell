@@ -13,7 +13,7 @@ import requests
 
 # Загрузка конфигурации
 load_dotenv()
-bot = telebot.TeleBot('8138858529:AAF5b7U3Gy_an0Af_JTuSkIJZoCT3j4qt1I')
+bot = telebot.TeleBot('7643704913:AAG71hJFCxkAZv-WPZjst5n3y61xs_-FlK0')
 
 # Константы
 COUNTRIES = {
