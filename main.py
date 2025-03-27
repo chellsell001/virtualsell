@@ -502,7 +502,7 @@ def show_available_numbers(message, user_data):
         bot.send_message(
             message.chat.id,
             f"{format_number_info(num)}\n"
-            "Для покупки отправьте:\n"
+            "Для покупки нажмите на команду и отправьте:\n"
             f"<code>/buy_{num.uid}</code>",
             parse_mode='HTML',
             reply_markup=types.ReplyKeyboardRemove()
@@ -633,7 +633,7 @@ def confirm_payment(call):
             f"🔢 Оплачен номер:\n{format_number_info(number)}\n"
             f"💸 Полная сумма: {transaction.amount:.2f} USD\n"
             f"💰 Ваша доля: {seller_amount:.2f} {transaction.crypto_currency}\n\n"
-            "Отправьте код SMS покупателю командой:\n"
+            "Отправьте код SMS покупателю командой (нажмите на нее для копирования):\n"
             f"<code>/send_code_{number.uid} КОД</code>",
             reply_markup=markup,
             parse_mode='HTML'
