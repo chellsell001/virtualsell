@@ -483,18 +483,19 @@ def process_buy_service(message, user_data):
     user_data['service'] = clean_service
     show_available_numbers(message, user_data)
 
-# ... (предыдущий код остается без изменений до функции show_available_numbers)
-
 def show_available_numbers(message, user_data, offset=0):
+    # Убираем эмодзи для сравнения с базой данных
+    clean_service = user_data['service'].replace('📱 ', '').replace('✈️ ', '')
+    
     numbers = session.query(Number).filter_by(
         country=user_data['country'],
-        service=user_data['service'],
+        service=clean_service,  # Используем clean_service без эмодзи
         status='available'
     ).order_by(Number.added_at.desc()).offset(offset).limit(5).all()
     
     total_numbers = session.query(Number).filter_by(
         country=user_data['country'],
-        service=user_data['service'],
+        service=clean_service,  # Используем clean_service без эмодзи
         status='available'
     ).count()
     
@@ -537,6 +538,22 @@ def show_available_numbers(message, user_data, offset=0):
             f"📋 Страница {offset//5 + 1} из {(total_numbers-1)//5 + 1}",
             reply_markup=markup
         )
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_')))
+def pagination_handler(call):
+    try:
+        action, country, service, offset = call.data.split('_')
+        offset = int(offset)
+        
+        user_data = {
+            'country': country,
+            'service': service
+        }
+        
+        show_available_numbers(call.message, user_data, offset)
+        bot.answer_callback_query(call.id)
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"❌ Ошибка: {str(e)}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_')))
 def pagination_handler(call):
