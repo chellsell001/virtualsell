@@ -23,9 +23,9 @@ COUNTRIES = {
 }
 SERVICES = ['📱 WhatsApp', '✈️ Telegram']
 RESERVE_TIME = 420  # 7 минут
-CRYPTOBOT_TOKEN = ('361366:AAX23ElQvhaHcWydcSeS764cmRWp43ikxNO')
+CRYPTOBOT_TOKEN = ('362827:AASWRddZwSqo5PuACaMcJI6oByEGK2fWGhz')
 CRYPTOBOT_CURRENCY = 'USDT'
-ADMIN_ID = ['5864627885', '7783847586']
+ADMIN_ID = ['7783847586']
 SELLER_SHARE = 0.6  # 60% продавцу
 ADMIN_SHARE = 0.4    # 40% администратору
 
@@ -104,7 +104,40 @@ def format_number_info(number):
         f"📞 Номер: {number.phone}\n"
         f"💵 Цена: {number.price:.2f} USD\n"
     )
+user_states = {}
 
+# Функция для создания клавиатуры с кнопкой "Назад"
+def create_back_markup():
+    markup = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    markup.add(telebot.types.KeyboardButton('Назад'))
+    return markup
+
+# Обработчик команды /start
+@bot.message_handler(commands=['start'])
+def start(message):
+    user_id = message.chat.id
+    user_states[user_id] = 'start' # Начальное состояние
+    bot.send_message(user_id, "Привет! Вы в начальном меню.", reply_markup=create_back_markup())
+
+# Обработчик текстовых сообщений
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    user_id = message.chat.id
+    text = message.text
+
+    if text == 'Назад':
+        # Возвращаемся к предыдущему состоянию
+        if user_id in user_states and user_states[user_id] != 'start':
+            # Здесь должна быть логика возврата к предыдущему шагу, 
+            # в зависимости от вашей реализации
+            bot.send_message(user_id, "Возвращаемся назад...")
+        else:
+            bot.send_message(user_id, "Вы уже в начальном меню.")
+    else:
+        # Обработка других сообщений
+        user_states[user_id] = 'current_state' # Обновляем состояние
+        bot.send_message(user_id, "Вы сделали какое-то действие.", reply_markup=create_back_markup())
+        
 def validate_phone(country, phone):
     config = COUNTRIES.get(country)
     if not config:
