@@ -10,6 +10,17 @@ from sqlalchemy import create_engine, Column, String, Float, DateTime, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import requests
+from aiosend import MAINNET, TESTNET
+import asyncio
+from aiosend import CryptoPay
+
+
+
+
+
+
+
+
 
 # Загрузка конфигурации
 load_dotenv()
@@ -23,12 +34,15 @@ COUNTRIES = {
 }
 SERVICES = ['📱 WhatsApp', '✈️ Telegram']
 RESERVE_TIME = 420  # 7 минут
-CRYPTOBOT_TOKEN = ('362827:AASWRddZwSqo5PuACaMcJI6oByEGK2fWGhz')
+CRYPTOBOT_TOKEN = '362827:AASWRddZwSqo5PuACaMcJI6oByEGK2fWGhz'
 CRYPTOBOT_CURRENCY = 'USDT'
-ADMIN_ID = ['7783847586']
-SELLER_SHARE = 0.6  # 60% продавцу
-ADMIN_SHARE = 0.4    # 40% администратору
+ADMIN_ID = ['7783847586','5864627885']
+SELLER_SHARE = 0.85  # 60% продавцу
+ADMIN_SHARE = 0.15   # 40% администратору
 
+client = CryptoPay(
+    token=CRYPTOBOT_TOKEN,
+    network=MAINNET)
 Base = declarative_base()
 
 class Number(Base):
@@ -287,6 +301,8 @@ def edit_price_limit(message):
         f"Текущие значения: {limit.min_price:.2f}-{limit.max_price:.2f} USD",
         reply_markup=types.ReplyKeyboardRemove()
     )
+
+
     bot.register_next_step_handler(msg, process_price_limit_update, limit)
 
 def process_price_limit_update(message, limit):
@@ -453,7 +469,7 @@ def process_sell_phone(message, user_data):
     user_data['phone'] = message.text
     msg = bot.send_message(
         message.chat.id,
-        "Введите цену в долларах USA (например: 5.50):"
+        f"Введите цену в долларах USA (например: 5.50)\n\nВАЖНО! Цена от: 1.20 USDT."
     )
     bot.register_next_step_handler(msg, process_sell_price, user_data)
 
@@ -743,42 +759,20 @@ def confirm_payment(call):
             parse_mode='HTML'
         )
         
-        # Чек для продавца (60%)
-        seller_amount = transaction.amount * SELLER_SHARE
-        markup = types.InlineKeyboardMarkup()
-        btn_seller = types.InlineKeyboardButton(
-            f"💰 Вывести {seller_amount:.2f} {transaction.crypto_currency}",
-            callback_data=f"withdraw_seller_{transaction.uid}"
-        )
-        markup.add(btn_seller)
+
         
         bot.send_message(
             transaction.seller_id,
             f"🔢 Оплачен номер:\n{format_number_info(number)}\n"
             f"💸 Полная сумма: {transaction.amount:.2f} USD\n"
-            f"💰 Ваша доля: {seller_amount:.2f} {transaction.crypto_currency}\n\n"
             "Отправьте код SMS покупателю командой (нажмите на нее для копирования):\n"
             f"<code>/send_code_{number.uid} КОД</code>",
-            reply_markup=markup,
             parse_mode='HTML'
         )
         
         # Чек для админа (40%)
-        admin_amount = transaction.amount * ADMIN_SHARE
-        markup = types.InlineKeyboardMarkup()
-        btn_admin = types.InlineKeyboardButton(
-            f"💼 Вывести {admin_amount:.2f} {transaction.crypto_currency}",
-            callback_data=f"withdraw_admin_{transaction.uid}"
-        )
-        markup.add(btn_admin)
-        
-        bot.send_message(
-            ADMIN_ID,
-            f"💰 Комиссия за номер:\n{format_number_info(number)}\n"
-            f"💼 Ваша доля: {admin_amount:.2f} {transaction.crypto_currency}",
-            reply_markup=markup,
-            parse_mode='HTML'
-        )
+
+
         
         bot.answer_callback_query(call.id, "✅ Оплата подтверждена")
         
@@ -968,7 +962,14 @@ def confirm_code_received(message):
         if str(message.from_user.id) != transaction.buyer_id:
             bot.send_message(message.chat.id, "❌ Это не ваш номер.")
             return
-        
+        seller_amount = transaction.amount * SELLER_SHARE
+
+        # Перевод продавцу
+        client.transfer(
+            user_id=transaction.seller_id,
+            amount=seller_amount,
+            asset=CRYPTOBOT_CURRENCY
+        )
         transaction.status = 'completed'
         transaction.completed_at = datetime.now()
         number.status = 'completed'
@@ -992,7 +993,13 @@ def confirm_code_received(message):
             "Сделка успешно завершена.",
             parse_mode='HTML'
         )
+        transaction.status = 'completed'
+        session.commit()
+
+        # Расчёт сумм
         
+
+
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}\nФормат: /confirm_code_UID")
 
